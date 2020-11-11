@@ -1,3 +1,14 @@
+/**
+ * Trumbowyg v2.21.0 - A lightweight WYSIWYG editor
+ * Trumbowyg core file
+ * ------------------------
+ * @link http://alex-d.github.io/Trumbowyg
+ * @license MIT
+ * @author Alexandre Demode (Alex-D)
+ *         Twitter : @AlexandreDemode
+ *         Website : alex-d.fr
+ */
+
 jQuery.trumbowyg = {
     langs: {
         en: {
@@ -584,11 +595,11 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
             t.$ed
                 .on('dblclick', 'img', t.o.imgDblClickHandler)
                 .on('keydown', function (e) {
-                    // append flags to differentiate Chrome spans
-                    var keyCode = e.which;
-                    if (keyCode === 8 || keyCode === 13 || keyCode === 46) {
-                        t.toggleSpan(true);
-                    }
+					var keyCode = e.which;
+					if (keyCode === 8 || keyCode === 13 || keyCode === 46) {
+						t.removeSpanStyle();
+					}
+
                     if ((e.ctrlKey || e.metaKey) && !e.altKey) {
                         ctrl = true;
                         var key = t.keys[String.fromCharCode(e.which).toUpperCase()];
@@ -608,7 +619,11 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
                                 return false;
                             } catch (c) {}
                         }
-                    }
+					}
+
+					if (keyCode === 8 || keyCode === 13 || keyCode === 46) {
+						t.removeSpanStyle();
+					}
                 })
                 .on('compositionstart compositionupdate', function () {
                     composition = true;
@@ -624,11 +639,6 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
 
                     if (keyCode >= 37 && keyCode <= 40) {
                         return;
-                    }
-
-                    // remove Chrome generated span tags
-                    if (keyCode === 8 || keyCode === 13 || keyCode === 46) {
-                        t.toggleSpan();
                     }
 
                     if ((e.ctrlKey || e.metaKey) && (keyCode === 89 || keyCode === 90)) {
@@ -1069,19 +1079,16 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
                     t.autogrowEditorOnEnter();
                 }
             }, 0);
+		},
+
+		removeSpanStyle: function () {
+			var t = this;
+
+            t.$ed.find('span').each(function () {
+				this.removeAttribute("style");
+			});
         },
 
-        // Remove or add flags to span tags to remove Chrome generated spans
-        toggleSpan: function (addFlag) {
-            var t = this;
-            t.$ed.find('span').each(function () {
-                if (addFlag === true) {
-                    $(this).attr('data-tbw-flag', true);
-                } else {
-                    $(this).attr('data-tbw-flag') ? $(this).removeAttr('data-tbw-flag') : $(this).contents().unwrap();
-                }
-            });
-        },
 
         // Open dropdown when click on a button which open that
         dropdown: function (name) {
@@ -1173,11 +1180,6 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
             t.saveRange();
             t.syncCode(force);
 
-            var restoreRange = true;
-            if (t.range && t.range.collapsed) {
-                restoreRange = false;
-            }
-
             if (t.o.semantic) {
                 t.semanticTag('b', t.o.semanticKeepAttributes);
                 t.semanticTag('i', t.o.semanticKeepAttributes);
@@ -1213,7 +1215,7 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
                     t.$ed.find('p:empty').remove();
                 }
 
-                if (!keepRange && restoreRange) {
+                if (!keepRange) {
                     t.restoreRange();
                 }
 
@@ -1221,9 +1223,8 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
             }
         },
 
-        semanticTag: function (oldTag, copyAttributes, revert) {
-            var newTag, t = this;
-            var tmpTag = oldTag;
+        semanticTag: function (oldTag, copyAttributes) {
+            var newTag;
 
             if (this.o.semantic != null && typeof this.o.semantic === 'object' && this.o.semantic.hasOwnProperty(oldTag)) {
                 newTag = this.o.semantic[oldTag];
@@ -1233,34 +1234,19 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
                 return;
             }
 
-            if(revert) {
-                oldTag = newTag;
-                newTag = tmpTag;
-            }
-
             $(oldTag, this.$ed).each(function () {
-                var resetRange = false;
                 var $oldTag = $(this);
                 if($oldTag.contents().length === 0) {
                     return false;
                 }
 
-                if(t.range.startContainer.parentNode && t.range.startContainer.parentNode === this) {
-                    resetRange = true;
-                }
-                var $newTag = $('<' + newTag + '/>');
-                $newTag.insertBefore($oldTag);
+                $oldTag.wrap('<' + newTag + '/>');
                 if (copyAttributes) {
                     $.each($oldTag.prop('attributes'), function () {
-                        $newTag.attr(this.name, this.value);
+                        $oldTag.parent().attr(this.name, this.value);
                     });
                 }
-                $newTag.html($oldTag.html());
-                $oldTag.remove();
-                if(resetRange === true) {
-                    t.range.selectNodeContents($newTag.get(0));
-                    t.range.collapse(false);
-                }
+                $oldTag.contents().unwrap();
             });
         },
 
@@ -1297,7 +1283,7 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
 
             var options = {
                 url: {
-                    label: t.lang.linkUrl || 'URL',
+                    label: 'URL',
                     required: true,
                     value: url
                 },
@@ -1453,10 +1439,6 @@ Object.defineProperty(jQuery.trumbowyg, 'defaultOptions', {
 
             if (cmd !== 'dropdown') {
                 t.$ed.focus();
-            }
-
-            if(cmd === 'strikethrough' && t.o.semantic) {
-                t.semanticTag('strike', t.o.semanticKeepAttributes, true); // browsers cannot undo e.g. <del> as they expect <strike>
             }
 
             try {
